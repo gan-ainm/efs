@@ -1,6 +1,8 @@
-(setq inhibit-startup-message t)
+(defvar efs/default-font-size 70)
 
 (setq package-user-dir "~/Projects/efs/packages")
+
+(setq inhibit-startup-message t)
 
 (scroll-bar-mode -1)        ; Disable visible scrollbar
 (tool-bar-mode -1)          ; Disable the toolbar
@@ -12,16 +14,25 @@
 ;; Set up the visible bell
 (setq visible-bell t)
 
-(set-face-attribute 'default nil :font "Fira Code Retina" :height 70)
+;; Disable line numbers for some modes
+(dolist (mode '(org-mode-hook
+                term-mode-hook
+                shell-mode-hook
+                eshell-mode-hook
+                helpful-mode-hook))
+  (add-hook mode (lambda () (display-line-numbers-mode 0))))
+
+;; Font Configuration ----------------------------------------------------------
+
+(set-face-attribute 'default nil :font "Fira Code Retina" :height runemacs/default-font-size)
 
 ;; Set the fixed pitch face
-(set-face-attribute 'fixed-pitch nil :font "Fira Code Retina" :height 70)
+(set-face-attribute 'fixed-pitch nil :font "Fira Code Retina" :height efs/default-font-size)
 
 ;; Set the variable pitch face
 (set-face-attribute 'variable-pitch nil :font "Cantarell" :height 80 :weight 'regular)
 
-;; Make ESC quit prompts
-(global-set-key (kbd "<escape>") 'keyboard-escape-quit)
+;; Package Manager Configuration -----------------------------------------------
 
 ;; Initialize package sources
 (require 'package)
@@ -44,16 +55,10 @@
 (column-number-mode)
 (global-display-line-numbers-mode t)
 
-;; Disable line numbers for some modes
-(dolist (mode '(org-mode-hook
-                term-mode-hook
-                shell-mode-hook
-                eshell-mode-hook
-                helpful-mode-hook))
-  (add-hook mode (lambda () (display-line-numbers-mode 0))))
-
 
 (use-package command-log-mode)
+
+;; Ivy Configuration -----------------------------------------------------------
 
 (use-package ivy
   :diminish
@@ -72,6 +77,12 @@
          ("C-d" . ivy-reverse-i-search-kill))
   :config
   (ivy-mode 1))
+
+;; NOTE: The first time you load your configuration on a new machine, you'll
+;; need to run the following command interactively so that mode line icons
+;; display correctly
+;;
+;; M-x all-the-icons-install-fonts
 
 (use-package all-the-icons)
 
@@ -113,6 +124,11 @@
   ([remap describe-variable] . counsel-describe-variable)
   ([remap describe-key] . helpful-key))
 
+;; Key Binding Configuration ---------------------------------------------------
+
+;; Make ESC quit prompts
+(global-set-key (kbd "<escape>") 'keyboard-escape-quit)
+
 (use-package general
   :config
   (general-create-definer rune/leader-keys
@@ -124,25 +140,12 @@
    "t"  '(:ignore t :which-key "toggles")
    "tt" '(counsel-load-theme :which-key "choose theme")))
 
-;;(defun rune/evil-hook ()
-;;  (dolist (mode '(custom-mode
-;;                  eshell-mode
-;;                  git-rebase-mode
-;;                  erc-mode
-;;                  circe-server-mode
-;;                  circe-chat-mode
-;;                  circe-query-mode
-;;                  sauron-mode
-;;                  term-mode))
-;;    (add-to-list 'evil-emacs-state-modes mode)))
-
 (use-package evil
   :init
   (setq evil-want-integration t
         evil-want-keybinding nil
         evil-want-C-u-scroll t
         evil-want-C-i-jump nil)
-;;  :hook (evil-mode . rune/evil-hook)
   :config
   (evil-mode 1)
   (define-key evil-insert-state-map (kbd "C-g") 'evil-normal-state)
@@ -171,6 +174,8 @@
 (rune/leader-keys
   "ts" '(hydra-text-scale/body :which-key "scale text"))
 
+;; Projectile Configuration ----------------------------------------------------
+
 (use-package projectile
   :diminish projectile-mode
   :config (projectile-mode)
@@ -186,20 +191,24 @@
 (use-package counsel-projectile
   :config (counsel-projectile-mode))
 
+;; Magit Configuration ---------------------------------------------------------
+
 (use-package magit
   :custom
   (magit-display-buffer-function #'magit-display-buffer-same-window-except-diff-v1))
 
+;; NOTE: Make sure to configure a GitHub token before using this package!
+;; - https://magit.vc/manual/forge/Token-Creation.html#Token-Creation
+;; - https://magit.vc/manual/ghub/Getting-Started.html#Getting-Started
 (use-package forge)
 
 (defun efs/org-mode-setup ()
   (org-indent-mode)
   (variable-pitch-mode 1)
-;;  (auto-fill-mode 0)
   (visual-line-mode 1))
-;;  (setq evil-auto-indent nil))
 
-;; Replace list hyphen with dot
+;; Org Mode Configuration ------------------------------------------------------
+
 (defun efs/org-font-setup ()
   ;; Replace list hyphen with dot
   (font-lock-add-keywords 'org-mode
@@ -231,19 +240,22 @@
   (setq org-ellipsis " ▼"
         org-hide-emphasis-markers t
         org-agenda-files '("~/Projects/efs/OrgFiles/Tasks.org"
-                           "~/Projects/efs/OrgFiles/Birthdays.org")
+                           "~/Projects/efs/OrgFiles/Birthdays.org"
+			   "~/Projects/efs/OrgFiles/Habits.org")
         org-agenda-start-with-log-mode t
         org-log-done 'time
-        org-log-into-drawer t
-        org-todo-keywords '((sequence "TODO(t)" "NEXT(n)" "|" "DONE(d!)")
-                            (sequence "BACKLOG(b)" "PLAN(p)" "READY(r)" "ACTIVE(a)" "REVIEW(v)" "WAIT(w@/!)" "HOLD(h)" "|" "COMPLETED(c)" "CANC(k@)"))
-	org-refile-targets '(("Archive.org" :maxlevel . 1)
-			     ("Tasks.org" :maxlevel . 1)))
+        org-log-into-drawer t)
 
   (require 'org-habit)
   (add-to-list 'org-modules 'org-habit)
   (setq org-habit-graph-column 60)
-  
+
+  (setq org-todo-keywords '((sequence "TODO(t)" "NEXT(n)" "|" "DONE(d!)")
+                            (sequence "BACKLOG(b)" "PLAN(p)" "READY(r)" "ACTIVE(a)" "REVIEW(v)" "WAIT(w@/!)" "HOLD(h)" "|" "COMPLETED(c)" "CANC(k@)")))
+
+  (setq org-refile-targets '(("Archive.org" :maxlevel . 1)
+			     ("Tasks.org" :maxlevel . 1)))
+
   ;; Save Org buffers after refiling
   (advice-add 'org-refile :after 'org-save-all-org-buffers)
 
@@ -311,46 +323,46 @@
                (org-agenda-files org-agenda-files)))))))
 
   (setq org-capture-templates
-	`(("t" "Tasks/Projects")
-	  ("tt" "Task" entry (file+olp "~/Projects/efs/OrgFiles/Tasks.org" "Inbox")
-	   "* TODO %?\n %U\n %a\n %i" :empty-lines 1)
-	  ("ts" "Clocked Entry Subtask" entry (clock)
-	   "* TODO %?\n %U\n %a\n %i" :empty-lines 1)
+    `(("t" "Tasks/Projects")
+      ("tt" "Task" entry (file+olp "~/Projects/efs/OrgFiles/Tasks.org" "Inbox")
+       "* TODO %?\n %U\n %a\n %i" :empty-lines 1)
 
-	  ("j" "Journal Entries")
-	  ("jj" "Journal" entry (file+olp+datetree "~/Projects/efs/OrgFiles/Journal.org")
-	   "\n* %<%H:%M> - Journal :journal:\n\n%?\n\n"
-	   ;; ,(dw/read-file-as-string "~/Notes/Templates/Daily.org")
-	   :clock-in :clock-resume
-	   :empty-lines 1)
-	  ("jm" "Meeting" entry (file+olp+datetree "~/Projects/efs/OrgFiles/Journal.org")
-	   "* %<%H:%M> - %a :meetings:\n\n%?\n\n"
-	   :clock-in :clock-resume
-	   :empty-lines 1)
+      ("j" "Journal Entries")
+      ("jj" "Journal" entry
+       (file+olp+datetree "~/Projects/efs/OrgFiles/Journal.org")
+       "\n* %<%H:%M> - Journal :journal:\n\n%?\n\n"
+       ;; ,(dw/read-file-as-string "~/Notes/Templates/Daily.org")
+       :clock-in :clock-resume:empty-lines 1)
+      ("jm" "Meeting" entry
+       (file+olp+datetree "~/Projects/efs/OrgFiles/Journal.org")
+       "* %<%H:%M> - %a :meetings:\n\n%?\n\n"
+       :clock-in :clock-resume:empty-lines 1)
 
-	  ("w" "Workflows")
-	  ("we" "Checking Email" entry (file+olp+datetree "~/Projects/efs/OrgFiles/Journal.org")
-	   "* Checking Email :email:\n\n%?" :clock-in :clock-resume :empty-lines 1)
+      ("w" "Workflows")
+      ("we" "Checking Email" entry
+       (file+olp+datetree "~/Projects/efs/OrgFiles/Journal.org")
+       "* Checking Email :email:\n\n%?" :clock-in :clock-resume :empty-lines 1)
 
-	  ("m" "Metrics Capture")
-	  ("mw" "Weight" table-line (file+headline "~/Projects/efs/OrgFiles/Metrics.org" "Weight")
-	   "| %U | %^{Weight} | %^{Notes} |" :kill-buffer t)))
-  
-  (define-key global-map (kbd "C-c c")
+      ("m" "Metrics Capture")
+      ("mw" "Weight" table-line
+       (file+headline "~/Projects/efs/OrgFiles/Metrics.org" "Weight")
+       "| %U | %^{Weight} | %^{Notes} |" :kill-buffer t)))
+
+  (define-key global-map (kbd "C-c j")
     (lambda () (interactive) (org-capture nil "j")))
-  
+
   (efs/org-font-setup))
 
-(use-package org-bullets
-  :after org
-  :hook (org-mode . org-bullets-mode)
-  :custom
-  (org-bullets-bullet-list '("◉" "○" "●" "○" "●" "○" "●")))
+  (use-package org-bullets
+    :after org
+    :hook (org-mode . org-bullets-mode)
+    :custom
+    (org-bullets-bullet-list '("◉" "○" "●" "○" "●" "○" "●")))
 
-(defun efs/org-mode-visual-fill ()
-  (setq visual-fill-column-width 100
-	visual-fill-column-center-text t)
-  (visual-fill-column-mode 1))
+  (defun efs/org-mode-visual-fill ()
+    (setq visual-fill-column-width 100
+      visual-fill-column-center-text t)
+    (visual-fill-column-mode 1))
 
-(use-package visual-fill-column
-  :hook (org-mode . efs/org-mode-visual-fill))
+  (use-package visual-fill-colum
+    :hook (org-mode . efs/org-mode-visual-fill))
