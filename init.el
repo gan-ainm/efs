@@ -364,5 +364,5 @@
       visual-fill-column-center-text t)
     (visual-fill-column-mode 1))
 
-  (use-package visual-fill-colum
+  (use-package visual-fill-column
     :hook (org-mode . efs/org-mode-visual-fill))
