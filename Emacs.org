@@ -1,5 +1,5 @@
 #+title Emacs From Scratch Configuration
-#+PROPERTY: header-args:emacs-lisp :tangle init-new.el :mkdirp yes
+#+PROPERTY: header-args:emacs-lisp :tangle init.el :mkdirp yes
 
 * Package System Setup
 
@@ -13,11 +13,10 @@
                            ("elpa" . "https://elpa.gnu.org/packages/")))
 
   (package-initialize)
-
   (unless package-archive-contents
     (package-refresh-contents))
 
-    ;; Initialize use-package on non-Linux platforms
+  ;; Initialize use-package on non-Linux platforms
   (unless (package-installed-p 'use-package)
     (package-install 'use-package))
 
@@ -49,6 +48,7 @@
   (dolist (mode '(org-mode-hook
                   term-mode-hook
                   shell-mode-hook
+		   treemacs-mode-hook
                   eshell-mode-hook
                   helpful-mode-hook))
     (add-hook mode (lambda () (display-line-numbers-mode 0))))
@@ -59,7 +59,9 @@
 
 #+begin_src emacs-lisp
 
-  (set-face-attribute 'default nil :font "Fira Code Retina" :height runemacs/default-font-size)
+  (setq efs/default-font-size 70)
+
+  (set-face-attribute 'default nil :font "Fira Code Retina" :height efs/default-font-size)
 
   ;; Set the fixed pitch face
   (set-face-attribute 'fixed-pitch nil :font "Fira Code Retina" :height efs/default-font-size)
@@ -122,6 +124,41 @@
 
 #+end_src
 
+** Color Theme
+
+#+begin_src emacs-lisp
+
+  (use-package doom-themes
+    :init (load-theme 'doom-palenight t))
+
+#+end_src
+
+** Better Modeline
+
+   NOTE: The first time you load your configuration on a new machine, you'll need to run the following command interactively so that mode line icons display correctly: ~M-x all-the-icons-install-fonts~
+
+#+begin_src emacs-lisp
+
+  (use-package all-the-icons)
+
+  (use-package doom-modeline
+    :init (doom-modeline-mode 1)
+    :custom ((doom-modeline-height 15)))
+
+#+end_src
+
+** Which Key
+
+#+begin_src emacs-lisp
+
+  (use-package which-key
+    :init (which-key-mode)
+    :diminish which-key-mode
+    :config
+    (setq which-key-idle-delay 1))
+
+#+end_src
+
 ** Ivy and Counsel
 
 #+begin_src emacs-lisp
@@ -143,30 +180,6 @@
            ("C-d" . ivy-reverse-i-search-kill))
     :config
     (ivy-mode 1))
-
-  ;; NOTE: The first time you load your configuration on a new machine, you'll
-  ;; need to run the following command interactively so that mode line icons
-  ;; display correctly
-  ;;
-  ;; M-x all-the-icons-install-fonts
-
-  (use-package all-the-icons)
-
-  (use-package doom-modeline
-    :init (doom-modeline-mode 1)
-    :custom ((doom-modeline-height 15)))
-
-  (use-package doom-themes
-    :init (load-theme 'doom-palenight t))
-
-  (use-package rainbow-delimiters
-    :hook (prog-mode . rainbow-delimiters-mode))
-
-  (use-package which-key
-    :init (which-key-mode)
-    :diminish which-key-mode
-    :config
-    (setq which-key-idle-delay 1))
 
   (use-package ivy-rich
     :init
@@ -214,16 +227,12 @@
     "ts" '(hydra-text-scale/body :which-key "scale text"))
 
 #+end_src
+
 * Org Mode
 
-** Basic Config
+** Better Font Faces
 
 #+begin_src emacs-lisp
-
-  (defun efs/org-mode-setup ()
-    (org-indent-mode)
-    (variable-pitch-mode 1)
-    (visual-line-mode 1))
 
   (defun efs/org-font-setup ()
     ;; Replace list hyphen with dot
@@ -249,6 +258,17 @@
     (set-face-attribute 'org-special-keyword nil :inherit '(font-lock-comment-face fixed-pitch))
     (set-face-attribute 'org-meta-line nil :inherit '(font-lock-comment-face fixed-pitch))
     (set-face-attribute 'org-checkbox nil :inherit 'fixed-pitch))
+
+#+end_src
+
+** Basic Config
+
+#+begin_src emacs-lisp
+
+  (defun efs/org-mode-setup ()
+    (org-indent-mode)
+    (variable-pitch-mode 1)
+    (visual-line-mode 1))
 
   (use-package org
     :hook (org-mode . efs/org-mode-setup)
@@ -369,19 +389,31 @@
 
     (efs/org-font-setup))
 
-    (use-package org-bullets
-      :after org
-      :hook (org-mode . org-bullets-mode)
-      :custom
-      (org-bullets-bullet-list '("◉" "○" "●" "○" "●" "○" "●")))
+#+end_src
 
-    (defun efs/org-mode-visual-fill ()
-      (setq visual-fill-column-width 100
-        visual-fill-column-center-text t)
-      (visual-fill-column-mode 1))
+** Nicer Heading Bullets
 
-    (use-package visual-fill-colum
-      :hook (org-mode . efs/org-mode-visual-fill))
+#+begin_src emacs-lisp
+
+  (use-package org-bullets
+    :after org
+    :hook (org-mode . org-bullets-mode)
+    :custom
+    (org-bullets-bullet-list '("◉" "○" "●" "○" "●" "○" "●")))
+
+#+end_src
+
+** Center Org Buffers
+
+#+begin_src emacs-lisp
+
+  (defun efs/org-mode-visual-fill ()
+    (setq visual-fill-column-width 100
+      visual-fill-column-center-text t)
+    (visual-fill-column-mode 1))
+
+  (use-package visual-fill-column
+    :hook (org-mode . efs/org-mode-visual-fill))
 
 #+end_src
 
@@ -398,6 +430,8 @@
 
 #+end_src
 
+** Structure Templates
+
 Use ~org-tempo~ for quicker template setup.
 
 #+begin_src emacs-lisp
@@ -406,6 +440,7 @@ Use ~org-tempo~ for quicker template setup.
   (add-to-list 'org-structure-template-alist '("sh" . "src shell"))
   (add-to-list 'org-structure-template-alist '("el" . "src emacs-lisp"))
   (add-to-list 'org-structure-template-alist '("py" . "src python"))
+
 #+end_src
 
 ** Auto-tangle Configuration Files
@@ -423,9 +458,123 @@ Use ~org-tempo~ for quicker template setup.
 
 #+end_src
 
-
 * Development
 
+** Languages
+
+*** IDE Features with lsp-mode
+
+#+begin_src emacs-lisp
+
+  (defun efs/lsp-mode-setup ()
+    (setq lsp-headerline-breadcrumb-segments '(path-up-to-project file symbols))
+    (lsp-headerline-breadcrumb-mode))
+
+  (use-package lsp-mode
+    :commands (lsp lsp-deferred)
+    :init
+    (setq lsp-keymap-prefix "C-c l") ;; Or 'C-l', 's-l'
+    :config
+    (lsp-enable-which-key-integration t))
+
+#+end_src
+
+*** lsp-ui
+
+#+begin_src emacs-lisp
+
+  (use-package lsp-ui
+    :hook (lsp-mode . lsp-ui-mode)
+    :custom
+    (lsp-ui-doc-position 'bottom))
+
+#+end_src
+
+*** lsp-treemacs
+
+#+begin_src emacs-lisp
+
+  (use-package lsp-treemacs
+    :after lsp)
+
+#+end_src
+
+*** lsp-ivy
+
+#+begin_src emacs-lisp
+
+  (use-package lsp-ivy)
+
+#+end_src
+
+*** Flycheck
+
+#+begin_src emacs-lisp
+
+  (use-package flycheck
+    :ensure t
+    :init (global-flycheck-mode))
+
+#+end_src
+
+*** Debugging with dap-mode
+
+#+begin_src emacs-lisp
+
+  (use-package dap-mode
+    ;; Uncomment the config below if you want all UI panes to be hidden by default
+    ;; :custom
+    ;; (lsb-enable-dap-auto-configure nil)
+    ;; :config
+    ;; (dap-ui-mode)
+
+    :config
+    (require 'dap-node)
+    (dap-node-setup)
+
+    (general-define-key
+     :keymaps 'lsp-mode-map
+     :prefix lsp-keymap-prefix
+     "d" '(dap-hydra t :wk "debugger")))
+
+#+end_src
+
+*** Python
+
+#+begin_src emacs-lisp
+
+  (use-package python-mode
+    :ensure t
+    :hook (python-mode . lsp-deferred)
+    :custom
+    ;; NOTE: Set these if Python 3 is called "python3" on your system
+    ;; (python-shell-interpreter "python3")
+    ;; (dap-python-executable "python3")
+    (dap-python-debugger 'debugpy)
+    :config
+  (require 'dap-python))
+
+#+end_src
+
+** Company Mode
+
+#+begin_src emacs-lisp
+
+  (use-package company
+    :after lsp-mode
+    :hook (lsp-mode . company-mode)
+    :bind (:map company-active-map
+                ("<tab>" . company-complete-selection))
+          (:map lsp-mode-map
+                ("<tab>" . company-indent-or-complete-common))
+    :custom
+    (company-minimum-prefix-length 1)
+    (company-idle-delay 0.0))
+
+  (use-package company-box
+    :hook (company-mode . company-box-mode))
+
+#+end_src
 ** Projectile
 
 #+begin_src emacs-lisp
@@ -459,6 +608,24 @@ Use ~org-tempo~ for quicker template setup.
   ;; - https://magit.vc/manual/forge/Token-Creation.html#Token-Creation
   ;; - https://magit.vc/manual/ghub/Getting-Started.html#Getting-Started
   (use-package forge)
+
+#+end_src
+
+** Commenting
+
+#+begin_src emacs-lisp
+
+  (use-package evil-nerd-commenter
+    :bind ("M-/" . evilnc-comment-or-uncomment-lines))
+
+#+end_src
+
+** Rainbow Delimiters
+
+#+begin_src emacs-lisp
+
+  (use-package rainbow-delimiters
+    :hook (prog-mode . rainbow-delimiters-mode))
 
 #+end_src
 
